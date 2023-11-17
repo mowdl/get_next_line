@@ -14,15 +14,13 @@
 # define GET_NEXT_LINE_H
 
 # ifndef BUFFER_SIZE
-#  define BUFFER_SIZE 16
+#  define BUFFER_SIZE 42
 # endif // !BUFFER_SIZE
 
-char	*get_next_line(int fd);
+# include <stddef.h>
 
-typedef struct s_string {
-	char *s;
-	size_t size;
-	size_t len;
-} t_string;
+void	ft_memcpy(char *dst, char *src, size_t len);
+char	*load_file(int fd);
+char	*get_next_line(int fd);
 
 #endif
