@@ -6,86 +6,119 @@
 /*   By: mel-meka <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/11/06 18:55:33 by mel-meka          #+#    #+#             */
-/*   Updated: 2023/11/10 16:43:16 by mel-meka         ###   ########.fr       */
+/*   Updated: 2023/11/21 23:55:26 by mel-meka         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "get_next_line.h"
-#include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-#include <stdio.h>
-
-char	*get_line_from_file(char **ptr)
+void	append_to_str(t_string *str, char *buf, ssize_t bytes)
 {
-	size_t	len;
-	char	*line;
-	char	*read_ptr;
+	char	*tmp;
 
-	read_ptr = *ptr;
-	len = 0;
-	while (read_ptr[len] != '\0')
+	if (str->size <= str->len + bytes + 1)
 	{
-		if (read_ptr[len] == '\n')
+		str->size = (str->size + bytes) * 2;
+		tmp = malloc(sizeof(char) * str->size);
+		if (tmp == NULL)
 		{
-			len++;
-			break ;
+			str->len = 0;
+			return ;
 		}
-		len++;
+		if (str->len)
+			ft_memcpy(tmp, str->s, str->len + 1);
+		if (str->s)
+			free(str->s);
+		str->s = tmp;
 	}
-	if (len == 0)
+	ft_memcpy(str->s + str->len, buf, bytes);
+	str->len += bytes;
+	str->s[str->len] = '\0';
+}
+
+void	read_until_endl(int fd, t_string *str, char *buf)
+{
+	ssize_t	bytes;
+
+	bytes = read(fd, buf, BUFFER_SIZE);
+	while (bytes > 0)
+	{
+		append_to_str(str, buf, bytes);
+		if (str->len == 0)
+			return ;
+		if (ft_memchr(buf, '\n', bytes))
+			return ;
+		bytes = read(fd, buf, BUFFER_SIZE);
+	}
+	if (bytes == -1)
+	{
+		str->len = 0;
+		return ;
+	}
+}
+
+void	clean_str(t_string *str)
+{
+	char	*endl;
+	size_t	len;
+
+	endl = ft_memchr(str->s, '\n', str->len);
+	if (endl == NULL)
+	{
+		str->len = 0;
+		return ;
+	}
+	len = str->len - (endl + 1 - str->s);
+	ft_memcpy(str->s, endl + 1, len);
+	str->len = len;
+}
+
+char	*get_line_from_string(t_string *str)
+{
+	char	*line;
+	char	*endl;
+	size_t	len;
+
+	if (str->len == 0)
 		return (NULL);
+	endl = ft_memchr(str->s, '\n', str->len);
+	if (endl == NULL)
+		len = str->len;
+	else
+		len = endl - str->s + 1;
 	line = malloc(sizeof(char) * (len + 1));
 	if (line == NULL)
 		return (NULL);
-	ft_memcpy(line, read_ptr, len);
+	ft_memcpy(line, str->s, len);
 	line[len] = '\0';
-	read_ptr += len;
-	*ptr = read_ptr;
+	clean_str(str);
 	return (line);
 }
 
 char	*get_next_line(int fd)
 {
-	static char	*file;
-	static char	*read_ptr;
-	char		*line;
+	static t_string	str;
+	char			*buf;
+	char			*line;
 
-	if (fd < 0)
+	if (fd < 0 || BUFFER_SIZE < 1)
 		return (NULL);
-	if (file == NULL)
-	{
-		file = load_file(fd);
-		read_ptr = file;
-	}
-	if (file == NULL)
+	buf = malloc(sizeof(char) * BUFFER_SIZE);
+	if (buf == NULL)
 		return (NULL);
-	line = get_line_from_file(&read_ptr);
-	if (*read_ptr == '\0')
+	read_until_endl(fd, &str, buf);
+	free(buf);
+	line = 0;
+	if (str.len)
+		line = get_line_from_string(&str);
+	if (str.len == 0)
 	{
-		free(file);
-		file = NULL;
+		if (str.size)
+			free(str.s);
+		str.s = 0;
+		str.size = 0;
 	}
 	return (line);
 }
-
-// int main(int ac, char **av)
-// {
-// 	int i = 1;
-// 	while (i < ac)
-// 	{
-// 		int fd = open(av[i], O_RDWR);
-// 		while (1)
-// 		{
-// 			char *line = get_next_line(fd);
-// 			if (line == NULL)
-// 				break;
-// 			printf("%s", line);
-// 			free(line);
-// 		}
-// 		close(fd);
-// 		i++;
-// 	}
-// }
-// // last line
